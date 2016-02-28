@@ -13,12 +13,17 @@ import net.easymodo.asagi.settings.BoardSettings;
 import org.apache.http.annotation.ThreadSafe;
 
 import java.io.*;
+import java.net.HttpURLConnection;
+import java.net.URL;
+
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @ThreadSafe
 public class Local extends Board {
     private final String path;
+    private final String boardName;
+    private final String externalServer;
     private final boolean useOldDirectoryStructure;
     private final int webGroupId;
 
@@ -44,6 +49,11 @@ public class Local extends Board {
         this.path = path;
         this.useOldDirectoryStructure = info.getUseOldDirectoryStructure();
         this.db = db;
+
+        // boardName obtained from table name (/r9k/ = r9k)
+        this.boardName = info.getTable();
+        // (CHANGEME) external server where images are offloaded
+        this.externalServer = "http://localhost";
 
         // getgrnam is thread-safe on sensible OSes, but it's not thread safe
         // on most ones.
@@ -195,6 +205,21 @@ public class Local extends Board {
         this.insertMedia(h, source, false);
     }
 
+    // Check if image already exists on external image host
+    public boolean onExternalServer(File filename, String boardName) throws IOException {
+        // ex: https://data.desustorage.org/a/image/1202/00/1202002714688.jpg
+        String url = String.format(this.externalServer + "/%s/image/%s/%s/%s", boardName, filename.substring(0, 4), filename.substring(4, 6), filename)
+        URL u = new URL(url);
+
+        HttpURLConnection http = (HttpURLConnection)url.openConnection();
+        http.setConnectTimeout(5000); // set timeout to 5 seconds
+        if (http.getResponseCode() == 200) { // HTTP 200 OK
+            return True;
+        } else { // 404, 502, 301, whatever
+            return False;
+        }
+    }
+
     public void insertMedia(MediaPost h, Board source, boolean isPreview) throws ContentGetException, ContentStoreException {
         // Post has no media
         if((isPreview && h.getPreview() == null) || (!isPreview && h.getMedia() == null))
@@ -230,9 +255,15 @@ public class Local extends Board {
 
         // Construct the path and back down if the file already exists
         File outputFile = new File(outputDir + "/" + filename);
-        if(outputFile.exists()) {
-            if (!isPreview) outputFile.setLastModified(System.currentTimeMillis());
-            return;
+        try {
+            // check if image already exists on external image server (for Desustorage)
+            if(outputFile.exists() || onExternalServer(filename, this.boardName)) {
+                if (!isPreview) outputFile.setLastModified(System.currentTimeMillis());
+                return;
+            }
+        } catch (IOException e) { // if unable to connect to LTS, prompt stderr, continue to download
+            System.err.println("Unable to query external image server for: " + filename + ". ");
+            System.err.println("Check your connection to the external server. Downloading from 4chan instead.");
         }
 
         // Open a temp file for writing
