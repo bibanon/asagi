@@ -206,9 +206,9 @@ public class Local extends Board {
     }
 
     // Check if image already exists on external image host
-    public boolean onExternalServer(File filename, String boardName) throws IOException {
+    public boolean onExternalServer(String filename, String boardName) throws IOException {
         // ex: https://data.desustorage.org/a/image/1202/00/1202002714688.jpg
-        String url = String.format(this.externalServer + "/%s/image/%s/%s/%s", boardName, filename.getName().substring(0, 4), filename.substring(4, 6), filename);
+        String url = String.format(this.externalServer + "/%s/image/%s/%s/%s", boardName, filename.substring(0, 4), filename.substring(4, 6), filename);
         URL u = new URL(url);
 
         HttpURLConnection http = (HttpURLConnection)url.openConnection();
@@ -257,7 +257,7 @@ public class Local extends Board {
         File outputFile = new File(outputDir + "/" + filename);
         try {
             // check if image already exists on external image server (for Desustorage)
-            if(outputFile.exists() || onExternalServer(filename.getName(), this.boardName)) {
+            if(outputFile.exists() || onExternalServer(filename, this.boardName)) {
                 if (!isPreview) outputFile.setLastModified(System.currentTimeMillis());
                 return;
             }
