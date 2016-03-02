@@ -204,21 +204,25 @@ public class Local extends Board {
     public void insertMedia(MediaPost h, Board source) throws ContentGetException, ContentStoreException {
         this.insertMedia(h, source, false);
     }
-
+    
     // Check if image already exists on external image host
-    public boolean onExternalServer(String filename, String boardName) throws IOException {
-        // ex: https://data.desustorage.org/a/image/1202/00/1202002714688.jpg
-        String u = String.format(this.externalServer + "/%s/image/%s/%s/%s", boardName, filename.substring(0, 4), filename.substring(4, 6), filename);
-        URL url = new URL(u);
-
-        HttpURLConnection http = (HttpURLConnection)url.openConnection();
-        http.setConnectTimeout(5000); // set timeout to 5 seconds
-        if (http.getResponseCode() == 200) { // HTTP 200 OK
-            return true;
-        } else { // 404, 502, 301, whatever
+    // http://stackoverflow.com/a/4596483
+    public static boolean onExternalServer(String filename, String boardName){
+        try {
+            // ex: https://data.desustorage.org/a/image/1202/00/1202002714688.jpg
+            String u = String.format(this.externalServer + "/%s/image/%s/%s/%s", boardName, filename.substring(0, 4), filename.substring(4, 6), filename);
+            HttpURLConnection.setFollowRedirects(false);
+            // note : you may also need
+            //        HttpURLConnection.setInstanceFollowRedirects(false)
+            HttpURLConnection con = (HttpURLConnection) new URL(URLName).openConnection();
+            con.setRequestMethod("HEAD");
+            return (con.getResponseCode() == HttpURLConnection.HTTP_OK);
+        }
+        catch (Exception e) {
+            e.printStackTrace();
             return false;
         }
-    }
+      }
 
     public void insertMedia(MediaPost h, Board source, boolean isPreview) throws ContentGetException, ContentStoreException {
         // Post has no media
@@ -255,15 +259,10 @@ public class Local extends Board {
 
         // Construct the path and back down if the file already exists
         File outputFile = new File(outputDir + "/" + filename);
-        try {
-            // check if image already exists on external image server (for Desustorage)
-            if(outputFile.exists() || onExternalServer(filename, this.boardName)) {
-                if (!isPreview) outputFile.setLastModified(System.currentTimeMillis());
-                return;
-            }
-        } catch (IOException e) { // if unable to connect to LTS, prompt stderr, continue to download
-            System.err.println("Unable to query external image server for: " + filename + ". ");
-            System.err.println("Check your connection to the external server. Downloading from 4chan instead.");
+        // check if image already exists on external image server (for Desustorage)
+        if(outputFile.exists() || onExternalServer(filename, this.boardName)) {
+            if (!isPreview) outputFile.setLastModified(System.currentTimeMillis());
+            return;
         }
 
         // Open a temp file for writing
