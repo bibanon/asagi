@@ -208,8 +208,8 @@ public class Local extends Board {
     // Check if image already exists on external image host
     public boolean onExternalServer(String filename, String boardName) throws IOException {
         // ex: https://data.desustorage.org/a/image/1202/00/1202002714688.jpg
-        String url = String.format(this.externalServer + "/%s/image/%s/%s/%s", boardName, filename.substring(0, 4), filename.substring(4, 6), filename);
-        URL u = new URL(url);
+        String u = String.format(this.externalServer + "/%s/image/%s/%s/%s", boardName, filename.substring(0, 4), filename.substring(4, 6), filename);
+        URL url = new URL(u);
 
         HttpURLConnection http = (HttpURLConnection)url.openConnection();
         http.setConnectTimeout(5000); // set timeout to 5 seconds
