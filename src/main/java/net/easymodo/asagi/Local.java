@@ -207,14 +207,14 @@ public class Local extends Board {
     
     // Check if image already exists on external image host
     // http://stackoverflow.com/a/4596483
-    public static boolean onExternalServer(String filename, String boardName){
+    public boolean onExternalServer(String filename, String boardName){
         try {
             // ex: https://data.desustorage.org/a/image/1202/00/1202002714688.jpg
             String u = String.format(this.externalServer + "/%s/image/%s/%s/%s", boardName, filename.substring(0, 4), filename.substring(4, 6), filename);
             HttpURLConnection.setFollowRedirects(false);
             // note : you may also need
             //        HttpURLConnection.setInstanceFollowRedirects(false)
-            HttpURLConnection con = (HttpURLConnection) new URL(URLName).openConnection();
+            HttpURLConnection con = (HttpURLConnection) new URL(u).openConnection();
             con.setRequestMethod("HEAD");
             return (con.getResponseCode() == HttpURLConnection.HTTP_OK);
         }
