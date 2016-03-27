@@ -1,3 +1,11 @@
+## Info about this repository
+
+This fork was made by the Bibliotheca Anonoma on request from ATC to make it possible to poll an external server (data.desustorage.org) to see if an image already existed there, and avoid downloading it if it did.
+
+Unfortunately, since it checked the status of every single image, this effectively DDoSed the external server.
+
+We will figure out another method that is based on a proposed field in the image table, which has value True if the image was already offloaded to the external server, and has value False if it hasn't. Another function should periodically offload the images to the server, and then write this in the database.
+
 # Asagi
 
 [Asagi](http://eksopl.github.io/asagi/) is a reimplementation of Fuuka's dumper side in Java. It allows you to dump and archive posts, images and all relevant data from imageboards into a local database and local image store (at the moment, only 4chan is supported).

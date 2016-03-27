@@ -209,7 +209,7 @@ public class Local extends Board {
     // http://stackoverflow.com/a/4596483
     public boolean onExternalServer(String filename, String boardName){
         try {
-            // ex: https://data.desustorage.org/a/image/1202/00/1202002714688.jpg
+            // ex: https://69.247.9.161:4232/a/image/1202/00/1202002714688.jpg
             String u = String.format(this.externalServer + "/%s/image/%s/%s/%s", boardName, filename.substring(0, 4), filename.substring(4, 6), filename);
             HttpURLConnection.setFollowRedirects(false);
             // note : you may also need
