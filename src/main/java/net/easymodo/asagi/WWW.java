@@ -61,9 +61,10 @@ public abstract class WWW extends Board {
         }
     }
 
-    private static final Pattern jschl_vcPattern;
-    private static final Pattern passPattern;
-    private static final Pattern jschl_answerPattern;
+    private static final Pattern cfc_pat_s;
+    private static final Pattern cfc_pat_vc;
+    private static final Pattern cfc_pat_pass;
+    private static final Pattern cfc_pat_answer;
 
     static {
         HttpParams params = new BasicHttpParams();
@@ -77,13 +78,10 @@ public abstract class WWW extends Board {
         pccm.setMaxTotal(100);
         httpClient = new DecompressingHttpClient(new DefaultHttpClient(pccm, params));
 
-        String jschl_vc_pat = "name=\"jschl_vc\" \\s value=\"(.*?)\"";
-        String pass_pat = "name=\"pass\" \\s value=\"(.*?)\"";
-        String jschl_answer_pat = "(var \\s s,t,o,p,b,r,e,a,k,i,n,g,f, \\s .*a\\.value \\s = \\s .*?\\.toFixed\\(10\\)) \\s \\+ \\s t\\.length;";
-
-        jschl_vcPattern = Pattern.compile(jschl_vc_pat, Pattern.COMMENTS | Pattern.DOTALL);
-        passPattern = Pattern.compile(pass_pat, Pattern.COMMENTS | Pattern.DOTALL);
-        jschl_answerPattern = Pattern.compile(jschl_answer_pat, Pattern.COMMENTS | Pattern.DOTALL);
+        cfc_pat_s = Pattern.compile("name=\"s\" value=\"(.*?)\"", Pattern.DOTALL);
+        cfc_pat_vc = Pattern.compile("name=\"jschl_vc\" value=\"(.*?)\"", Pattern.DOTALL);
+        cfc_pat_pass = Pattern.compile("name=\"pass\" value=\"(.*?)\"", Pattern.DOTALL);
+        cfc_pat_answer = Pattern.compile("(var s,t,o,p,b,r,e,a,k,i,n,g,f.+?\\r?\\n[\\s\\S]+?a\\.value =.+?\\.toFixed\\(10\\))", Pattern.DOTALL);
     }
 
     private HttpResponse wget(String link, String referer) throws HttpGetException, CfBicClearParseException {
@@ -137,43 +135,52 @@ public abstract class WWW extends Board {
 
         if(statusCode != 200) {
             if(statusCode == 503) {
-                System.out.println("Cloudflare browser integrity check detected. Attempting to pass...");
+                System.out.println("Cloudflare check detected, attempting to pass...");
                 try {
-                    String pageText = EntityUtils.toString(res.getEntity(), "UTF-8");
+                    String pagetext;
+                    Matcher matcher;
+
+                    String cfc_str_s;
+                    String cfc_str_vc;
+                    String cfc_str_pass;
+                    String cfc_str_answer;
+
+                    pagetext = EntityUtils.toString(res.getEntity(), "UTF-8");
                     EntityUtils.consumeQuietly(res.getEntity());
-                    Matcher mat = jschl_vcPattern.matcher(pageText);
-                    if(!mat.find()) {
-                        throw new CfBicClearParseException("Error parsing BIC page: Could not parse \"jschl_vc\"");
-                    }
-                    String jschl_vc = mat.group(1);
-                    mat = passPattern.matcher(pageText);
-                    if(!mat.find()) {
-                        throw new CfBicClearParseException("Error parsing BIC page: Could not parse \"pass\"");
-                    }
-                    String pass = mat.group(1);
-                    mat = jschl_answerPattern.matcher(pageText);
-                    if(!mat.find()) {
-                        throw new CfBicClearParseException("Error parsing BIC page: Could not parse \"jschl_answer\"");
-                    }
-                    String jschl_answer = mat.group(1);
 
-                    jschl_answer = jschl_answer.replaceAll("a\\.value = (.*?\\.toFixed\\(10\\))", "$1;");
-                    jschl_answer = jschl_answer.replaceAll("t = document\\.createElement.*?;", "");
-                    jschl_answer = jschl_answer.replaceAll("t\\.innerHTML=\"<a href='/'>x</a>\";", "");
-                    jschl_answer = jschl_answer.replaceAll("t = t\\.firstChild\\.href;r = t.match\\(/https\\?:\\\\/\\\\//\\)\\[0\\];", "");
-                    jschl_answer = jschl_answer.replaceAll("t = t\\.substr\\(r\\.length\\); t = t\\.substr\\(0,t\\.length-1\\);", "");
-                    jschl_answer = jschl_answer.replaceAll("a = document\\.getElementById\\('jschl-answer'\\);", "");
-                    jschl_answer = jschl_answer.replaceAll("f = document\\.getElementById\\('challenge-form'\\);", "");
-                    jschl_answer = jschl_answer.replaceAll("\\n|(\\s\\s)", "");
-                    jschl_answer = String.format("console.log(require('vm').runInNewContext('%s', Object.create(null), {timeout: 5000}));", jschl_answer);
+                    matcher = cfc_pat_s.matcher(pagetext);
+                    if(!matcher.find()) throw new CfBicClearParseException("Cloudflare check bypass failed at cfc_pat_s");
+                    cfc_str_s = matcher.group(1);
+                    matcher = cfc_pat_vc.matcher(pagetext);
+                    if(!matcher.find()) throw new CfBicClearParseException("Cloudflare check bypass failed at cfc_pat_vc");
+                    cfc_str_vc = matcher.group(1);
+                    matcher = cfc_pat_pass.matcher(pagetext);
+                    if(!matcher.find()) throw new CfBicClearParseException("Cloudflare check bypass failed at cfc_pat_pass");
+                    cfc_str_pass = matcher.group(1);
+                    matcher = cfc_pat_answer.matcher(pagetext);
+                    if(!matcher.find()) throw new CfBicClearParseException("Cloudflare check bypass failed at cfc_pat_answer");
+                    cfc_str_answer = matcher.group(1);
 
-                    String[] args = {"node", "-e", jschl_answer};
-                    jschl_answer = this.execCmd(args);
-                    BigDecimal number = new BigDecimal(jschl_answer.trim()).add(new BigDecimal(req.getURI().getHost().length()));
+                    cfc_str_answer = cfc_str_answer.replaceAll("a\\.value = (.*?\\.toFixed\\(10\\))", "$1;");
+                    cfc_str_answer = cfc_str_answer.replaceAll(" \\+ t\\.length", "");
+                    cfc_str_answer = cfc_str_answer.replaceAll("t = document\\.createElement.*?;", "");
+                    cfc_str_answer = cfc_str_answer.replaceAll("t\\.innerHTML=\"<a href='/'>x</a>\";", "");
+                    cfc_str_answer = cfc_str_answer.replaceAll("t = t\\.firstChild\\.href;r = t.match\\(/https\\?:\\\\/\\\\//\\)\\[0\\];", "");
+                    cfc_str_answer = cfc_str_answer.replaceAll("t = t\\.substr\\(r\\.length\\); t = t\\.substr\\(0,t\\.length-1\\);", "");
+                    cfc_str_answer = cfc_str_answer.replaceAll("a = document\\.getElementById\\('jschl-answer'\\);", "");
+                    cfc_str_answer = cfc_str_answer.replaceAll("f = document\\.getElementById\\('challenge-form'\\);", "");
+                    cfc_str_answer = cfc_str_answer.replaceAll("\\n|(\\s\\s)", "");
+                    
+                    cfc_str_answer = String.format("console.log(require('vm').runInNewContext('%s', Object.create(null), {timeout: 3000}));", cfc_str_answer);
+                    cfc_str_answer = this.execCmd(new String[] {"node", "-e", cfc_str_answer});
+                    cfc_str_answer = (new BigDecimal(cfc_str_answer.trim()).add(new BigDecimal(req.getURI().getHost().length()))).toString();
+
+                    link = String.format("%s://%s/cdn-cgi/l/chk_jschl?s=%s&jschl_vc=%s&pass=%s&jschl_answer=%s",
+                        req.getURI().getScheme(), req.getURI().getHost(), cfc_str_s, cfc_str_vc, cfc_str_pass, cfc_str_answer);
 
                     Thread.sleep(8000);
-                    return this.wget(String.format("%s://%s/cdn-cgi/l/chk_jschl?jschl_vc=%s&pass=%s&jschl_answer=%s",
-                            req.getURI().getScheme(), req.getURI().getHost(), jschl_vc, pass, number.toString()), referer);
+
+                    return this.wget(link, referer);
                 } catch(IOException e) {
                     throw new HttpGetException(e);
                 } catch(InterruptedException e) {
