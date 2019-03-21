@@ -88,7 +88,7 @@ public abstract class SQL implements DB {
         this.updateQuery =
                 String.format(
                         "UPDATE \"%s\" SET comment = ?, deleted = ?, media_filename = COALESCE(?, media_filename)," +
-                        "  sticky = (? OR sticky), locked = (? or locked), exif = ? WHERE num = ? AND subnum = ?",
+                        "  sticky = (? OR sticky), locked = (? or locked), exif = COALESCE(?, exif) WHERE num = ? AND subnum = ?",
                         this.table);
 
         this.updateDeletedQuery = String.format("UPDATE \"%s\" SET deleted = ?, timestamp_expired = ? WHERE num = ? AND subnum = ?",
@@ -202,7 +202,7 @@ public abstract class SQL implements DB {
                 updateStmt.setString(c++,post.getMediaFilename());
                 updateStmt.setBoolean(c++, post.isSticky());
                 updateStmt.setBoolean(c++, post.isClosed());
-                updateStmt.setString(c++, post.getExif());
+                updateStmt.setString(c++, (post.isArchived() ? null : post.getExif()));
                 updateStmt.setInt(c++, post.getNum());
                 updateStmt.setInt(c, post.getSubnum());
                 updateStmt.addBatch();
