@@ -117,8 +117,9 @@ public abstract class YotsubaAbstract extends WWW {
         // Links
         text = text.replaceAll("<a[^>]*>(.*?)</a>", "$1");
         // old spoilers
-        text = text.replaceAll("<span class=\"spoiler\"[^>]*>", "[spoiler]");
-        text = text.replaceAll("</span>", "[/spoiler]");
+        text = text.replaceAll("<span class=\"spoiler\"[^>]*>(.*?)</span>", "[spoiler]$1[/spoiler]");
+        // ShiftJIS
+        text = text.replaceAll("<span class=\"sjis\">(.*?)</span>", "[shiftjis]$1[/shiftjis]");
         // new spoilers
         text = text.replaceAll("<s>", "[spoiler]");
         text = text.replaceAll("</s>", "[/spoiler]");
